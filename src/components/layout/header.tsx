@@ -12,7 +12,7 @@ import {
 } from "@tabler/icons-react";
 
 const actionButtonClass =
-  "hidden h-9 items-center gap-2 rounded-lg border border-primary/15 bg-primary/10 px-3.5 text-[13px] font-medium text-primary shadow-sm shadow-primary/5 backdrop-blur transition hover:border-primary/25 hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:inline-flex";
+  "hidden h-9 cursor-pointer items-center gap-2 rounded-lg border border-primary/15 bg-primary/10 px-3.5 text-xs font-bold text-primary shadow-sm shadow-primary/5 backdrop-blur transition hover:border-primary/25 hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:inline-flex";
 
 export function Header({
   activeTitle,
@@ -66,7 +66,7 @@ export function Header({
           type="button"
         >
           <IconPlus className="size-4" />
-          新建改编
+          <strong>开始创作</strong>
         </button>
         <IconButton label={dark ? "切换亮色" : "切换暗色"} onClick={onThemeToggle}>
           {dark ? <IconSun className="size-4" /> : <IconMoon className="size-4" />}

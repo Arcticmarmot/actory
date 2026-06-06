@@ -48,7 +48,7 @@ export function MobileSidebar({
       <button
         aria-label="关闭菜单"
         className={cn(
-          "absolute inset-0 bg-black/40 transition-opacity",
+          "absolute inset-0 cursor-pointer bg-black/40 transition-opacity",
           isOpen ? "opacity-100" : "opacity-0",
         )}
         type="button"
@@ -104,7 +104,7 @@ function SidebarNav({
   onNavClick: (key: NavKey) => void;
 }) {
   return (
-    <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
+    <nav className="subtle-scrollbar flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
       <div className="space-y-1.5">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -115,7 +115,7 @@ function SidebarNav({
               key={item.key}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "group flex h-10 w-full items-center gap-2.5 rounded-lg px-2.5 text-[15px] font-medium leading-[15px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "group flex h-10 w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-bold leading-[13px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 active
                   ? "border border-sidebar-border bg-sidebar-accent/90 text-sidebar-accent-foreground shadow-sm shadow-black/[0.03]"
                   : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
@@ -126,14 +126,14 @@ function SidebarNav({
               onClick={() => onNavClick(item.key)}
             >
               <Icon className="size-[15px] shrink-0" stroke={1.9} />
-              <span
+              <strong
                 className={cn(
                   "truncate transition-opacity duration-150",
                   isOpen ? "opacity-100" : "hidden opacity-0",
                 )}
               >
                 {item.title}
-              </span>
+              </strong>
             </button>
           );
         })}
@@ -147,7 +147,7 @@ function SidebarFooter({ isOpen }: { isOpen: boolean }) {
     <div className="border-t border-sidebar-border p-2">
       <button
         className={cn(
-          "flex h-11 w-full items-center gap-2 rounded-md px-2 text-left transition hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "flex h-11 w-full cursor-pointer items-center gap-2 rounded-md px-2 text-left transition hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           !isOpen && "justify-center",
         )}
         title="作者工作区"
@@ -157,7 +157,7 @@ function SidebarFooter({ isOpen }: { isOpen: boolean }) {
           <IconUserCircle className="size-4" />
         </div>
         <div className={cn("min-w-0", isOpen ? "block" : "hidden")}>
-          <p className="truncate text-[13px] font-medium text-foreground">作者工作区</p>
+          <strong className="block truncate text-xs text-foreground">作者工作区</strong>
           <p className="truncate text-xs text-muted-foreground">本地草稿</p>
         </div>
       </button>
