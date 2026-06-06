@@ -11,10 +11,10 @@ import { cn } from "@/lib/cn";
 import { useEffect, useMemo, useState } from "react";
 
 export function WorkspaceShell() {
-  const [activeNav, setActiveNav] = useState<NavKey>("home");
+  const [activeNav, setActiveNav] = useState<NavKey>("workspace");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(true);
 
   const activeItem = useMemo(
     () => navItems.find((item) => item.key === activeNav) ?? navItems[0],
