@@ -6,6 +6,7 @@ import {
 } from "@/components/layout/app-sidebar";
 import { Header } from "@/components/layout/header";
 import { MyNovelsView } from "@/components/my-novels-view";
+import { MyScreenplaysView } from "@/components/my-screenplays-view";
 import {
   WorkspaceDashboard,
   type WorkspaceNovelDraft,
@@ -87,7 +88,8 @@ export function WorkspaceShell() {
           {activeNav === "novels" ? (
             <MyNovelsView onConvertNovel={handleConvertNovel} />
           ) : null}
-          {activeNav === "screenplays" || activeNav === "stats" ? (
+          {activeNav === "screenplays" ? <MyScreenplaysView /> : null}
+          {activeNav === "stats" ? (
             <PlaceholderPanel title={activeItem.title} />
           ) : null}
         </section>

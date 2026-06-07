@@ -5,6 +5,10 @@ import {
   createStoredNovel,
   findNovelTitleConflict,
 } from "@/lib/novel-storage";
+import {
+  createStoredScreenplay,
+  findScreenplayTitleConflict,
+} from "@/lib/screenplay-storage";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   IconBooks,
@@ -55,6 +59,7 @@ type FormNotice = {
 };
 
 type SaveDialogState = "confirm" | "conflict" | null;
+type ScreenplaySaveDialogState = "confirm" | "conflict" | null;
 
 type ConvertResponseBody = {
   error?: unknown;
@@ -68,20 +73,20 @@ type NovelDemoResponseBody = {
   chapters?: unknown;
 };
 
-type CharacterDraft = {
+export type CharacterDraft = {
   id: string;
   name: string;
   role: string;
   description: string;
 };
 
-type HeadingDraft = {
+export type HeadingDraft = {
   space: string;
   location: string;
   time: string;
 };
 
-type BlockDraft = {
+export type BlockDraft = {
   id: string;
   type: string;
   text: string;
@@ -90,7 +95,7 @@ type BlockDraft = {
   line: string;
 };
 
-type SceneDraft = {
+export type SceneDraft = {
   id: string;
   number: string;
   sourceChapter: string;
@@ -98,7 +103,7 @@ type SceneDraft = {
   blocks: BlockDraft[];
 };
 
-type ScreenplayDraft = {
+export type ScreenplayDraft = {
   title: string;
   screenplayType: ScriptStyleValue;
   characters: CharacterDraft[];
@@ -140,7 +145,7 @@ const styleOptions = [
   },
 ] as const;
 
-type ScriptStyleValue = (typeof styleOptions)[number]["value"];
+export type ScriptStyleValue = (typeof styleOptions)[number]["value"];
 
 const styleLabelByValue: Record<ScriptStyleValue, string> = Object.fromEntries(
   styleOptions.map((option) => [option.value, option.label]),
@@ -272,7 +277,7 @@ const findTopLevelYamlValue = (yaml: string, key: string) => {
   return stripYamlValue(line.slice(line.indexOf(":") + 1));
 };
 
-const normalizeScreenplayType = (value: string): ScriptStyleValue => {
+export const normalizeScreenplayType = (value: string): ScriptStyleValue => {
   if (value === "film") {
     return "standard_film";
   }
@@ -529,6 +534,8 @@ export function WorkspaceDashboard({
   const [isConverting, setIsConverting] = useState(false);
   const [isLoadingDemo, setIsLoadingDemo] = useState(false);
   const [saveDialog, setSaveDialog] = useState<SaveDialogState>(null);
+  const [screenplaySaveDialog, setScreenplaySaveDialog] =
+    useState<ScreenplaySaveDialogState>(null);
   const [selectedStyle, setSelectedStyle] = useState<ScriptStyleValue>(
     styleOptions[0].value,
   );
@@ -951,10 +958,40 @@ export function WorkspaceDashboard({
       return;
     }
 
+    if (!screenplayDraft.title.trim()) {
+      setOutputNotice({
+        tone: "error",
+        text: "剧本标题不能为空。",
+      });
+      return;
+    }
+
+    if (findScreenplayTitleConflict(screenplayDraft.title)) {
+      setScreenplaySaveDialog("conflict");
+      return;
+    }
+
+    setScreenplaySaveDialog("confirm");
+  };
+
+  const confirmSaveScreenplay = () => {
+    if (!screenplayDraft) {
+      setScreenplaySaveDialog(null);
+      return;
+    }
+
+    createStoredScreenplay({
+      title: screenplayDraft.title,
+      screenplayType: screenplayDraft.screenplayType,
+      characters: screenplayDraft.characters,
+      scenes: screenplayDraft.scenes,
+    });
+
     setOutputNotice({
       tone: "success",
-      text: "剧本输出已通过本地检查。",
+      text: "剧本已保存到我的剧本。",
     });
+    setScreenplaySaveDialog(null);
   };
 
   const toggleOutputLock = () => {
@@ -988,6 +1025,24 @@ export function WorkspaceDashboard({
           tone="danger"
           title="无法保存"
           onCancel={() => setSaveDialog(null)}
+        />
+      ) : null}
+      {screenplaySaveDialog === "confirm" ? (
+        <ConfirmDialog
+          cancelLabel="取消"
+          confirmLabel="确认"
+          message="您确定要保存这个剧本吗？"
+          title="保存剧本"
+          onCancel={() => setScreenplaySaveDialog(null)}
+          onConfirm={confirmSaveScreenplay}
+        />
+      ) : null}
+      {screenplaySaveDialog === "conflict" ? (
+        <ConfirmDialog
+          message="已存在同名剧本，请修改标题后再保存。"
+          tone="danger"
+          title="无法保存"
+          onCancel={() => setScreenplaySaveDialog(null)}
         />
       ) : null}
       <div className="grid h-full min-h-0 gap-4 px-4 py-4 md:px-6 lg:grid-cols-2">
@@ -1327,7 +1382,7 @@ function ScreenplayGeneratingPanel() {
   );
 }
 
-function ScreenplayOutputPanel({
+export function ScreenplayOutputPanel({
   draft,
   locked,
   onBlockChange,

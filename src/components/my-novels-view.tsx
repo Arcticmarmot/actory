@@ -73,6 +73,8 @@ const dangerButtonClass =
 const lockButtonClass =
   "inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border border-warning/35 bg-warning/10 px-3.5 text-xs font-bold text-warning shadow-sm transition hover:bg-warning/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
+const footerActionButtonClass = "min-w-[92px]";
+
 const fieldClass =
   "w-full rounded-md border bg-card px-3 py-2 text-sm text-foreground shadow-sm outline-none transition placeholder:text-muted-foreground focus:border-primary/40 focus:ring-2 focus:ring-ring/25 read-only:cursor-default read-only:bg-muted/60 read-only:text-muted-foreground";
 
@@ -742,11 +744,19 @@ function NovelEditor({
               )}
             </div>
             <div className="flex gap-2">
-              <button className={secondaryButtonClass} type="button" onClick={onBack}>
+              <button
+                className={cn(secondaryButtonClass, footerActionButtonClass)}
+                type="button"
+                onClick={onBack}
+              >
                 <IconArrowLeft className="size-4" />
                 <strong>返回</strong>
               </button>
-              <button className={primaryButtonClass} type="button" onClick={requestSave}>
+              <button
+                className={cn(primaryButtonClass, footerActionButtonClass)}
+                type="button"
+                onClick={requestSave}
+              >
                 <IconDeviceFloppy className="size-4" />
                 <strong>保存</strong>
               </button>
