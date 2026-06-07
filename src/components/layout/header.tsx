@@ -18,6 +18,7 @@ export function Header({
   activeTitle,
   dark,
   onMobileMenu,
+  onStartCreate,
   onThemeToggle,
   onToggleSidebar,
   sidebarOpen,
@@ -25,6 +26,7 @@ export function Header({
   activeTitle: string;
   dark: boolean;
   onMobileMenu: () => void;
+  onStartCreate: () => void;
   onThemeToggle: () => void;
   onToggleSidebar: () => void;
   sidebarOpen: boolean;
@@ -63,6 +65,7 @@ export function Header({
         </label>
         <button
           className={actionButtonClass}
+          onClick={onStartCreate}
           type="button"
         >
           <IconPlus className="size-4" />

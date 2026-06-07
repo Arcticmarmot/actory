@@ -58,6 +58,12 @@ export function WorkspaceShell() {
     setMobileOpen(false);
   };
 
+  const handleStartCreate = () => {
+    setTargetScreenplayId(null);
+    setActiveNav("workspace");
+    setMobileOpen(false);
+  };
+
   const handleOpenScreenplay = (screenplayId: string) => {
     setTargetScreenplayId(screenplayId);
     setActiveNav("screenplays");
@@ -85,6 +91,7 @@ export function WorkspaceShell() {
             activeTitle={activeItem.title}
             dark={dark}
             onMobileMenu={() => setMobileOpen(true)}
+            onStartCreate={handleStartCreate}
             onThemeToggle={() => setDark((value) => !value)}
             onToggleSidebar={() => setSidebarOpen((value) => !value)}
             sidebarOpen={sidebarOpen}

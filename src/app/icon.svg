@@ -1,0 +1,14 @@
+<svg fill="none" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <g color="#ffffff">
+    <g transform="rotate(-10 11 28)">
+      <rect x="11" y="17" width="43" height="9" fill="currentColor" fill-opacity=".12"/>
+      <rect x="11" y="17" width="43" height="9" stroke="currentColor" stroke-linejoin="miter" stroke-width="4"/>
+      <path d="M20 17L25 26M32 17L37 26M44 17L49 26" stroke="currentColor" stroke-linecap="square" stroke-width="2.3"/>
+    </g>
+    <rect x="11" y="28" width="43" height="26" fill="currentColor" fill-opacity=".08"/>
+    <rect x="11" y="28" width="43" height="26" stroke="currentColor" stroke-linejoin="miter" stroke-width="4"/>
+    <path d="M11 37H54" stroke="currentColor" stroke-linecap="square" stroke-width="4"/>
+    <path d="M19 37L24 28M31 37L36 28M43 37L48 28" stroke="currentColor" stroke-linecap="square" stroke-width="2.3"/>
+    <path d="M21 46H36M41 46H48" stroke="currentColor" stroke-linecap="square" stroke-width="2.8"/>
+  </g>
+</svg>
