@@ -23,7 +23,6 @@ const allowedScreenplayTypes = new Set<ScreenplayType>([
   "fantasy_animation",
   "stage_play",
 ]);
-const allowedDemoIds = new Set(["1", "2", "3"]);
 
 const stripYamlValue = (value: string) => {
   const trimmed = value.trim();
@@ -176,30 +175,15 @@ const parseNovelDemoYaml = (yaml: string): NovelDemoPayload | null => {
   };
 };
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const demoId = searchParams.get("demo") ?? "1";
-
-    if (!allowedDemoIds.has(demoId)) {
-      return NextResponse.json(
-        { error: "Unknown novel demo." },
-        { status: 400 },
-      );
-    }
-
-    const filePath = path.join(
-      process.cwd(),
-      "docs",
-      "demo-novels",
-      `novel-demo${demoId}.yaml`,
-    );
+    const filePath = path.join(process.cwd(), "docs", "novel-demo.yaml");
     const yaml = await readFile(filePath, "utf8");
     const payload = parseNovelDemoYaml(yaml);
 
     if (!payload) {
       return NextResponse.json(
-        { error: `novel-demo${demoId}.yaml format is invalid.` },
+        { error: "novel-demo.yaml format is invalid." },
         { status: 500 },
       );
     }
