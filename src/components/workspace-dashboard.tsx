@@ -12,6 +12,7 @@ import {
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   IconBooks,
+  IconChevronDown,
   IconDeviceFloppy,
   IconEraser,
   IconFileText,
@@ -71,6 +72,12 @@ type NovelDemoResponseBody = {
   title?: unknown;
   screenplayType?: unknown;
   chapters?: unknown;
+};
+
+type DemoOption = {
+  id: string;
+  label: string;
+  meta: string;
 };
 
 export type CharacterDraft = {
@@ -150,6 +157,24 @@ export type ScriptStyleValue = (typeof styleOptions)[number]["value"];
 const styleLabelByValue: Record<ScriptStyleValue, string> = Object.fromEntries(
   styleOptions.map((option) => [option.value, option.label]),
 ) as Record<ScriptStyleValue, string>;
+
+const demoOptions: DemoOption[] = [
+  {
+    id: "1",
+    label: "示例1",
+    meta: "3章 · 文艺",
+  },
+  {
+    id: "2",
+    label: "示例2",
+    meta: "4章 · 戏剧",
+  },
+  {
+    id: "3",
+    label: "示例3",
+    meta: "8章 · 小说",
+  },
+];
 
 const createInitialChapters = (): ChapterDraft[] =>
   Array.from({ length: MIN_CHAPTERS }, (_, index) => ({
@@ -532,7 +557,8 @@ export function WorkspaceDashboard({
   const [outputLocked, setOutputLocked] = useState(true);
   const [outputNotice, setOutputNotice] = useState<FormNotice | null>(null);
   const [isConverting, setIsConverting] = useState(false);
-  const [isLoadingDemo, setIsLoadingDemo] = useState(false);
+  const [demoMenuOpen, setDemoMenuOpen] = useState(false);
+  const [loadingDemoId, setLoadingDemoId] = useState<string | null>(null);
   const [saveDialog, setSaveDialog] = useState<SaveDialogState>(null);
   const [screenplaySaveDialog, setScreenplaySaveDialog] =
     useState<ScreenplaySaveDialogState>(null);
@@ -541,6 +567,7 @@ export function WorkspaceDashboard({
   );
   const canAddChapter = chapters.length < MAX_CHAPTERS;
   const lockedCount = chapters.filter((chapter) => chapter.locked).length;
+  const isLoadingDemo = Boolean(loadingDemoId);
   const rightHeaderTitle = screenplayDraft?.title || workTitle.trim() || "未命名作品";
   const rightHeaderStyleValue = screenplayDraft?.screenplayType ?? selectedStyle;
   const rightHeaderStyle = getStyleLabel(rightHeaderStyleValue);
@@ -811,12 +838,13 @@ export function WorkspaceDashboard({
     setSaveDialog(null);
   };
 
-  const handleLoadDemo = async () => {
-    setIsLoadingDemo(true);
+  const handleLoadDemo = async (demoId: string) => {
+    setLoadingDemoId(demoId);
+    setDemoMenuOpen(false);
     setFormNotice(null);
 
     try {
-      const response = await fetch("/api/novel-demo");
+      const response = await fetch(`/api/novel-demo?demo=${demoId}`);
       const responseBody = (await response.json()) as NovelDemoResponseBody;
 
       if (!response.ok) {
@@ -860,11 +888,12 @@ export function WorkspaceDashboard({
         text: "示例文档加载失败。",
       });
     } finally {
-      setIsLoadingDemo(false);
+      setLoadingDemoId(null);
     }
   };
 
   const handleClearForm = () => {
+    setDemoMenuOpen(false);
     setWorkTitle("");
     setTitleError("");
     setSelectedStyle(styleOptions[0].value);
@@ -1096,19 +1125,43 @@ export function WorkspaceDashboard({
                   </div>
                 </div>
                 <div className="ml-auto flex shrink-0 gap-2">
-                  <button
-                    className={secondaryButtonClass}
-                    disabled={isLoadingDemo}
-                    type="button"
-                    onClick={handleLoadDemo}
-                  >
-                    {isLoadingDemo ? (
-                      <IconLoader2 className="size-4 animate-spin" />
-                    ) : (
-                      <IconFileText className="size-4" />
-                    )}
-                    <strong>{isLoadingDemo ? "加载中" : "示例"}</strong>
-                  </button>
+                  <div className="relative">
+                    <button
+                      aria-expanded={demoMenuOpen}
+                      className={secondaryButtonClass}
+                      disabled={isLoadingDemo || isConverting}
+                      type="button"
+                      onClick={() => setDemoMenuOpen((current) => !current)}
+                    >
+                      {isLoadingDemo ? (
+                        <IconLoader2 className="size-4 animate-spin" />
+                      ) : (
+                        <IconFileText className="size-4" />
+                      )}
+                      <strong>{isLoadingDemo ? "加载中" : "示例"}</strong>
+                      <IconChevronDown
+                        className={cn(
+                          "size-3.5 transition-transform",
+                          demoMenuOpen && "rotate-180",
+                        )}
+                      />
+                    </button>
+                    {demoMenuOpen ? (
+                      <div className="absolute right-0 z-30 mt-2 w-44 rounded-lg border bg-card p-1 shadow-lg">
+                        {demoOptions.map((option) => (
+                          <button
+                            key={option.id}
+                            className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-xs transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            type="button"
+                            onClick={() => handleLoadDemo(option.id)}
+                          >
+                            <strong className="text-foreground">{option.label}</strong>
+                            <span className="text-muted-foreground">{option.meta}</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
                   <button
                     className={secondaryButtonClass}
                     disabled={isConverting}
