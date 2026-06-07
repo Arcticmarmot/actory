@@ -2,6 +2,11 @@
 
 import { cn } from "@/lib/cn";
 import {
+  createStoredNovel,
+  findNovelTitleConflict,
+} from "@/lib/novel-storage";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
   IconBooks,
   IconDeviceFloppy,
   IconEraser,
@@ -28,6 +33,17 @@ type ChapterDraft = {
   locked: boolean;
 };
 
+export type WorkspaceNovelDraft = {
+  id?: string;
+  title: string;
+  chapters: {
+    id: string;
+    title: string;
+    content: string;
+    locked?: boolean;
+  }[];
+};
+
 type ChapterError = {
   title?: string;
   content?: string;
@@ -37,6 +53,8 @@ type FormNotice = {
   tone: "error" | "success";
   text: string;
 };
+
+type SaveDialogState = "confirm" | "conflict" | null;
 
 type ConvertResponseBody = {
   error?: unknown;
@@ -137,6 +155,30 @@ const createInitialChapters = (): ChapterDraft[] =>
   }));
 
 const initialChapters = createInitialChapters();
+
+const toChapterDrafts = (novel?: WorkspaceNovelDraft): ChapterDraft[] => {
+  if (!novel?.chapters.length) {
+    return initialChapters;
+  }
+
+  const nextChapters = novel.chapters.slice(0, MAX_CHAPTERS).map((chapter, index) => ({
+    id: chapter.id || `chapter-${index + 1}`,
+    title: chapter.title.slice(0, TITLE_LIMIT),
+    content: chapter.content.slice(0, CONTENT_LIMIT),
+    locked: Boolean(chapter.locked),
+  }));
+
+  while (nextChapters.length < MIN_CHAPTERS) {
+    nextChapters.push({
+      id: `chapter-${nextChapters.length + 1}`,
+      title: "",
+      content: "",
+      locked: false,
+    });
+  }
+
+  return nextChapters;
+};
 
 const primaryButtonClass =
   "inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border border-primary/15 bg-primary px-3.5 text-xs font-bold text-primary-foreground shadow-sm shadow-primary/10 transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
@@ -467,10 +509,16 @@ const parseScreenplayYaml = (yaml: string): ScreenplayDraft => {
   };
 };
 
-export function WorkspaceDashboard() {
-  const [workTitle, setWorkTitle] = useState("");
+export function WorkspaceDashboard({
+  initialNovel,
+}: {
+  initialNovel?: WorkspaceNovelDraft | null;
+}) {
+  const [workTitle, setWorkTitle] = useState(initialNovel?.title ?? "");
   const [titleError, setTitleError] = useState("");
-  const [chapters, setChapters] = useState<ChapterDraft[]>(initialChapters);
+  const [chapters, setChapters] = useState<ChapterDraft[]>(
+    toChapterDrafts(initialNovel ?? undefined),
+  );
   const [errors, setErrors] = useState<Record<string, ChapterError>>({});
   const [formNotice, setFormNotice] = useState<FormNotice | null>(null);
   const [screenplayDraft, setScreenplayDraft] = useState<ScreenplayDraft | null>(
@@ -480,6 +528,7 @@ export function WorkspaceDashboard() {
   const [outputNotice, setOutputNotice] = useState<FormNotice | null>(null);
   const [isConverting, setIsConverting] = useState(false);
   const [isLoadingDemo, setIsLoadingDemo] = useState(false);
+  const [saveDialog, setSaveDialog] = useState<SaveDialogState>(null);
   const [selectedStyle, setSelectedStyle] = useState<ScriptStyleValue>(
     styleOptions[0].value,
   );
@@ -729,10 +778,30 @@ export function WorkspaceDashboard() {
       return;
     }
 
+    if (findNovelTitleConflict(workTitle)) {
+      setSaveDialog("conflict");
+      return;
+    }
+
+    setSaveDialog("confirm");
+  };
+
+  const confirmSaveNovel = () => {
+    createStoredNovel({
+      title: workTitle,
+      chapters: chapters.map((chapter) => ({
+        id: chapter.id,
+        title: chapter.title.trim(),
+        content: chapter.content.trim(),
+        locked: chapter.locked,
+      })),
+    });
+
     setFormNotice({
       tone: "success",
-      text: "保存检查通过。",
+      text: "小说已保存到我的小说。",
     });
+    setSaveDialog(null);
   };
 
   const handleLoadDemo = async () => {
@@ -903,6 +972,24 @@ export function WorkspaceDashboard() {
 
   return (
     <div className="min-h-0 flex-1 overflow-hidden">
+      {saveDialog === "confirm" ? (
+        <ConfirmDialog
+          cancelLabel="取消"
+          confirmLabel="确认"
+          message="您确定要保存这篇小说吗？"
+          title="保存小说"
+          onCancel={() => setSaveDialog(null)}
+          onConfirm={confirmSaveNovel}
+        />
+      ) : null}
+      {saveDialog === "conflict" ? (
+        <ConfirmDialog
+          message="已存在同名小说，请修改标题后再保存。"
+          tone="danger"
+          title="无法保存"
+          onCancel={() => setSaveDialog(null)}
+        />
+      ) : null}
       <div className="grid h-full min-h-0 gap-4 px-4 py-4 md:px-6 lg:grid-cols-2">
         <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border bg-card shadow-sm">
           <input name="screenplayType" type="hidden" value={selectedStyle} />
@@ -1120,12 +1207,13 @@ export function WorkspaceDashboard() {
                 <span className="shrink-0 text-sm font-medium text-muted-foreground">
                   <strong>风格</strong>
                 </span>
-                <span
-                  aria-pressed="true"
-                  className={getStyleButtonClass(rightHeaderStyleOption, true)}
+                <button
+                    aria-pressed="true"
+                    className={getStyleButtonClass(rightHeaderStyleOption, true)}
+                    type="button"
                 >
                   <strong>{rightHeaderStyle}</strong>
-                </span>
+                </button>
               </div>
             </div>
           </div>
