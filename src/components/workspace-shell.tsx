@@ -5,7 +5,11 @@ import {
   MobileSidebar,
 } from "@/components/layout/app-sidebar";
 import { Header } from "@/components/layout/header";
-import { WorkspaceDashboard } from "@/components/workspace-dashboard";
+import { MyNovelsView } from "@/components/my-novels-view";
+import {
+  WorkspaceDashboard,
+  type WorkspaceNovelDraft,
+} from "@/components/workspace-dashboard";
 import { navItems, type NavKey } from "@/config/navigation";
 import { cn } from "@/lib/cn";
 import { useEffect, useMemo, useState } from "react";
@@ -15,6 +19,9 @@ export function WorkspaceShell() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dark, setDark] = useState(true);
+  const [workspaceNovelDraft, setWorkspaceNovelDraft] =
+    useState<WorkspaceNovelDraft | null>(null);
+  const [workspaceDraftKey, setWorkspaceDraftKey] = useState("empty");
 
   const activeItem = useMemo(
     () => navItems.find((item) => item.key === activeNav) ?? navItems[0],
@@ -35,6 +42,13 @@ export function WorkspaceShell() {
 
   const handleNavClick = (key: NavKey) => {
     setActiveNav(key);
+    setMobileOpen(false);
+  };
+
+  const handleConvertNovel = (novel: WorkspaceNovelDraft) => {
+    setWorkspaceNovelDraft(novel);
+    setWorkspaceDraftKey(`${novel.id ?? novel.title}-${Date.now()}`);
+    setActiveNav("workspace");
     setMobileOpen(false);
   };
 
@@ -64,9 +78,31 @@ export function WorkspaceShell() {
             sidebarOpen={sidebarOpen}
           />
 
-          <WorkspaceDashboard />
+          {activeNav === "workspace" ? (
+            <WorkspaceDashboard
+              key={workspaceDraftKey}
+              initialNovel={workspaceNovelDraft}
+            />
+          ) : null}
+          {activeNav === "novels" ? (
+            <MyNovelsView onConvertNovel={handleConvertNovel} />
+          ) : null}
+          {activeNav === "screenplays" || activeNav === "stats" ? (
+            <PlaceholderPanel title={activeItem.title} />
+          ) : null}
         </section>
       </div>
     </main>
+  );
+}
+
+function PlaceholderPanel({ title }: { title: string }) {
+  return (
+    <div className="flex min-h-0 flex-1 items-center justify-center px-4 py-4 md:px-6">
+      <div className="rounded-lg border bg-card p-6 text-center shadow-sm">
+        <strong className="text-sm text-foreground">{title}</strong>
+        <p className="mt-2 text-sm text-muted-foreground">该模块待实现。</p>
+      </div>
+    </div>
   );
 }
