@@ -4,6 +4,9 @@ import { cn } from "@/lib/cn";
 import {
   IconBooks,
   IconDeviceFloppy,
+  IconEraser,
+  IconFileText,
+  IconLoader2,
   IconLock,
   IconLockOpen,
   IconMovie,
@@ -38,6 +41,13 @@ type FormNotice = {
 type ConvertResponseBody = {
   error?: unknown;
   screenplayYaml?: unknown;
+};
+
+type NovelDemoResponseBody = {
+  error?: unknown;
+  title?: unknown;
+  screenplayType?: unknown;
+  chapters?: unknown;
 };
 
 type CharacterDraft = {
@@ -79,23 +89,31 @@ type ScreenplayDraft = {
 
 const styleOptions = [
   {
-    label: "电影",
-    value: "film",
+    label: "标准影视",
+    value: "standard_film",
     idleClass:
       "border-cyan-500/15 bg-cyan-500/5 hover:border-cyan-400/25 hover:bg-cyan-500/10",
     activeClass:
       "border-cyan-300/40 bg-cyan-400/10 shadow-cyan-500/10 ring-cyan-300/15",
   },
   {
-    label: "短剧",
-    value: "short_drama",
+    label: "商业短剧",
+    value: "commercial_short_drama",
     idleClass:
       "border-rose-500/15 bg-rose-500/5 hover:border-rose-400/25 hover:bg-rose-500/10",
     activeClass:
       "border-rose-300/40 bg-rose-400/10 shadow-rose-500/10 ring-rose-300/15",
   },
   {
-    label: "舞台剧",
+    label: "奇幻动画",
+    value: "fantasy_animation",
+    idleClass:
+      "border-emerald-500/15 bg-emerald-500/5 hover:border-emerald-400/25 hover:bg-emerald-500/10",
+    activeClass:
+      "border-emerald-300/40 bg-emerald-400/10 shadow-emerald-500/10 ring-emerald-300/15",
+  },
+  {
+    label: "舞台话剧",
     value: "stage_play",
     idleClass:
       "border-amber-500/15 bg-amber-500/5 hover:border-amber-400/25 hover:bg-amber-500/10",
@@ -106,15 +124,19 @@ const styleOptions = [
 
 type ScriptStyleValue = (typeof styleOptions)[number]["value"];
 
-const initialChapters: ChapterDraft[] = Array.from(
-  { length: MIN_CHAPTERS },
-  (_, index) => ({
+const styleLabelByValue: Record<ScriptStyleValue, string> = Object.fromEntries(
+  styleOptions.map((option) => [option.value, option.label]),
+) as Record<ScriptStyleValue, string>;
+
+const createInitialChapters = (): ChapterDraft[] =>
+  Array.from({ length: MIN_CHAPTERS }, (_, index) => ({
     id: `chapter-${index + 1}`,
     title: "",
     content: "",
     locked: false,
-  }),
-);
+  }));
+
+const initialChapters = createInitialChapters();
 
 const primaryButtonClass =
   "inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border border-primary/15 bg-primary px-3.5 text-xs font-bold text-primary-foreground shadow-sm shadow-primary/10 transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
@@ -124,6 +146,22 @@ const secondaryButtonClass =
 
 const dangerButtonClass =
   "inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-card px-3.5 text-xs font-bold text-red-500 shadow-sm transition hover:bg-red-500/10 hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40";
+
+const lockButtonClass =
+  "inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border border-warning/35 bg-warning/10 px-3.5 text-xs font-bold text-warning shadow-sm transition hover:bg-warning/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
+
+const styleButtonVisualClass =
+  "inline-flex h-9 items-center justify-center rounded-lg border px-3 text-xs font-bold text-foreground shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+const getStyleButtonClass = (
+  option: (typeof styleOptions)[number],
+  active: boolean,
+) =>
+  cn(
+    styleButtonVisualClass,
+    "cursor-pointer",
+    active ? `ring-2 ${option.activeClass}` : option.idleClass,
+  );
 
 const fieldClass =
   "w-full rounded-md border bg-card px-3 py-2 text-sm text-foreground shadow-sm outline-none transition placeholder:text-muted-foreground focus:border-primary/40 focus:ring-2 focus:ring-ring/25 read-only:cursor-default read-only:bg-muted/60 read-only:text-muted-foreground";
@@ -193,11 +231,62 @@ const findTopLevelYamlValue = (yaml: string, key: string) => {
 };
 
 const normalizeScreenplayType = (value: string): ScriptStyleValue => {
-  if (value === "short_drama" || value === "stage_play") {
+  if (value === "film") {
+    return "standard_film";
+  }
+
+  if (value === "short_drama") {
+    return "commercial_short_drama";
+  }
+
+  if (
+    value === "commercial_short_drama" ||
+    value === "fantasy_animation" ||
+    value === "stage_play"
+  ) {
     return value;
   }
 
-  return "film";
+  return "standard_film";
+};
+
+const getStyleLabel = (value: ScriptStyleValue) => styleLabelByValue[value];
+
+const getStyleOption = (value: ScriptStyleValue) =>
+  styleOptions.find((option) => option.value === value) ?? styleOptions[0];
+
+const normalizeDemoChapters = (value: unknown): ChapterDraft[] | null => {
+  if (!Array.isArray(value) || value.length < MIN_CHAPTERS) {
+    return null;
+  }
+
+  const chapters = value.map((item, index) => {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) {
+      return null;
+    }
+
+    const chapter = item as Record<string, unknown>;
+
+    if (typeof chapter.title !== "string" || typeof chapter.content !== "string") {
+      return null;
+    }
+
+    return {
+      id:
+        typeof chapter.id === "string" && chapter.id.trim()
+          ? chapter.id
+          : `demo-chapter-${index + 1}`,
+      title: chapter.title.slice(0, TITLE_LIMIT),
+      content: chapter.content.slice(0, CONTENT_LIMIT),
+      locked: false,
+    };
+  });
+
+  if (chapters.some((chapter) => chapter === null)) {
+    return null;
+  }
+
+  return chapters.slice(0, MAX_CHAPTERS) as ChapterDraft[];
 };
 
 const parseScreenplayYaml = (yaml: string): ScreenplayDraft => {
@@ -379,6 +468,8 @@ const parseScreenplayYaml = (yaml: string): ScreenplayDraft => {
 };
 
 export function WorkspaceDashboard() {
+  const [workTitle, setWorkTitle] = useState("");
+  const [titleError, setTitleError] = useState("");
   const [chapters, setChapters] = useState<ChapterDraft[]>(initialChapters);
   const [errors, setErrors] = useState<Record<string, ChapterError>>({});
   const [formNotice, setFormNotice] = useState<FormNotice | null>(null);
@@ -388,11 +479,32 @@ export function WorkspaceDashboard() {
   const [outputLocked, setOutputLocked] = useState(true);
   const [outputNotice, setOutputNotice] = useState<FormNotice | null>(null);
   const [isConverting, setIsConverting] = useState(false);
+  const [isLoadingDemo, setIsLoadingDemo] = useState(false);
   const [selectedStyle, setSelectedStyle] = useState<ScriptStyleValue>(
     styleOptions[0].value,
   );
   const canAddChapter = chapters.length < MAX_CHAPTERS;
   const lockedCount = chapters.filter((chapter) => chapter.locked).length;
+  const rightHeaderTitle = screenplayDraft?.title || workTitle.trim() || "未命名作品";
+  const rightHeaderStyleValue = screenplayDraft?.screenplayType ?? selectedStyle;
+  const rightHeaderStyle = getStyleLabel(rightHeaderStyleValue);
+  const rightHeaderStyleOption = getStyleOption(rightHeaderStyleValue);
+
+  const resetGeneratedOutput = () => {
+    setScreenplayDraft(null);
+    setOutputNotice(null);
+  };
+
+  const updateWorkTitle = (value: string) => {
+    setWorkTitle(value);
+
+    if (value.trim()) {
+      setTitleError("");
+    }
+
+    setFormNotice(null);
+    resetGeneratedOutput();
+  };
 
   const updateChapter = (
     id: string,
@@ -418,8 +530,7 @@ export function WorkspaceDashboard() {
       };
     });
     setFormNotice(null);
-    setScreenplayDraft(null);
-    setOutputNotice(null);
+    resetGeneratedOutput();
   };
 
   const toggleChapterLock = (id: string) => {
@@ -466,8 +577,7 @@ export function WorkspaceDashboard() {
       },
     ]);
     setFormNotice(null);
-    setScreenplayDraft(null);
-    setOutputNotice(null);
+    resetGeneratedOutput();
   };
 
   const deleteChapter = (id: string) => {
@@ -484,30 +594,7 @@ export function WorkspaceDashboard() {
       return nextErrors;
     });
     setFormNotice(null);
-    setScreenplayDraft(null);
-    setOutputNotice(null);
-  };
-
-  const updateScreenplayField = (
-    field: "title" | "screenplayType",
-    value: string,
-  ) => {
-    if (outputLocked) {
-      return;
-    }
-
-    setScreenplayDraft((current) =>
-      current
-        ? {
-            ...current,
-            [field]:
-              field === "screenplayType"
-                ? normalizeScreenplayType(value)
-                : value,
-          }
-        : current,
-    );
-    setOutputNotice(null);
+    resetGeneratedOutput();
   };
 
   const updateCharacter = (
@@ -609,6 +696,7 @@ export function WorkspaceDashboard() {
   };
 
   const validateChaptersForAction = (actionName: "保存" | "转换") => {
+    const titleMissing = !workTitle.trim();
     const nextErrors = chapters.reduce<Record<string, ChapterError>>(
       (result, chapter) => {
         const chapterError = validateChapter(chapter);
@@ -622,12 +710,13 @@ export function WorkspaceDashboard() {
       {},
     );
 
+    setTitleError(titleMissing ? "作品标题不能为空" : "");
     setErrors(nextErrors);
 
-    if (Object.keys(nextErrors).length > 0) {
+    if (titleMissing || Object.keys(nextErrors).length > 0) {
       setFormNotice({
         tone: "error",
-        text: `${actionName}前请补全每个章节的标题和内容。`,
+        text: `${actionName}前请补全作品标题、每个章节的标题和内容。`,
       });
       return false;
     }
@@ -646,6 +735,70 @@ export function WorkspaceDashboard() {
     });
   };
 
+  const handleLoadDemo = async () => {
+    setIsLoadingDemo(true);
+    setFormNotice(null);
+
+    try {
+      const response = await fetch("/api/novel-demo");
+      const responseBody = (await response.json()) as NovelDemoResponseBody;
+
+      if (!response.ok) {
+        setFormNotice({
+          tone: "error",
+          text:
+            typeof responseBody.error === "string"
+              ? responseBody.error
+              : "示例文档加载失败。",
+        });
+        return;
+      }
+
+      const demoChapters = normalizeDemoChapters(responseBody.chapters);
+
+      if (
+        typeof responseBody.title !== "string" ||
+        typeof responseBody.screenplayType !== "string" ||
+        !demoChapters
+      ) {
+        setFormNotice({
+          tone: "error",
+          text: "示例文档格式不正确。",
+        });
+        return;
+      }
+
+      setWorkTitle(responseBody.title);
+      setTitleError("");
+      setSelectedStyle(normalizeScreenplayType(responseBody.screenplayType));
+      setChapters(demoChapters);
+      setErrors({});
+      resetGeneratedOutput();
+      setFormNotice({
+        tone: "success",
+        text: "示例文档已填入。",
+      });
+    } catch {
+      setFormNotice({
+        tone: "error",
+        text: "示例文档加载失败。",
+      });
+    } finally {
+      setIsLoadingDemo(false);
+    }
+  };
+
+  const handleClearForm = () => {
+    setWorkTitle("");
+    setTitleError("");
+    setSelectedStyle(styleOptions[0].value);
+    setChapters(createInitialChapters());
+    setErrors({});
+    setFormNotice(null);
+    setOutputLocked(true);
+    resetGeneratedOutput();
+  };
+
   const handleConvert = async () => {
     if (!validateChaptersForAction("转换")) {
       return;
@@ -657,7 +810,7 @@ export function WorkspaceDashboard() {
     try {
       const response = await fetch("/api/convert", {
         body: JSON.stringify({
-          title: chapters[0]?.title.trim() ?? "",
+          title: workTitle.trim(),
           screenplayType: selectedStyle,
           chapters: chapters.map((chapter) => ({
             id: chapter.id,
@@ -695,12 +848,18 @@ export function WorkspaceDashboard() {
         return;
       }
 
-      setScreenplayDraft(parseScreenplayYaml(responseBody.screenplayYaml));
+      const parsedDraft = parseScreenplayYaml(responseBody.screenplayYaml);
+
+      setScreenplayDraft({
+        ...parsedDraft,
+        title: workTitle.trim(),
+        screenplayType: selectedStyle,
+      });
       setOutputLocked(true);
       setOutputNotice(null);
       setFormNotice({
         tone: "success",
-        text: "转换完成，mock 剧本已输出。",
+        text: "转换完成，剧本已输出。",
       });
     } catch {
       setScreenplayDraft(null);
@@ -747,18 +906,84 @@ export function WorkspaceDashboard() {
       <div className="grid h-full min-h-0 gap-4 px-4 py-4 md:px-6 lg:grid-cols-2">
         <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border bg-card shadow-sm">
           <input name="screenplayType" type="hidden" value={selectedStyle} />
-          <div className="shrink-0 border-b px-4 py-4 md:px-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-background text-primary shadow-sm">
-                    <IconBooks className="size-5" />
-                  </div>
-                  <strong className="text-lg leading-6 text-foreground md:text-xl">
-                    小说章节输入
-                  </strong>
+          <input name="title" type="hidden" value={workTitle} />
+          <div className="min-h-[176px] shrink-0 border-b px-4 py-4 md:px-5 lg:h-[176px]">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-background text-primary shadow-sm">
+                  <IconBooks className="size-5" />
                 </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
+                <strong className="truncate text-lg leading-6 text-foreground md:text-xl">
+                  小说输入
+                </strong>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                <span className="rounded-md border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground">
+                  {chapters.length}/{MAX_CHAPTERS} 章
+                </span>
+                <span className="rounded-md border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground">
+                  已锁定 {lockedCount}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-3 grid gap-2.5">
+              <div className="flex flex-wrap items-start gap-3">
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <label
+                    className="mt-2.5 shrink-0 text-sm font-medium text-muted-foreground"
+                    htmlFor="novel-title"
+                  >
+                    <strong>标题</strong>
+                  </label>
+                  <div className="min-w-0 flex-1 sm:max-w-[240px]">
+                    <input
+                      id="novel-title"
+                      aria-invalid={Boolean(titleError)}
+                      className={cn(fieldClass, titleError && errorFieldClass)}
+                      placeholder="输入作品标题"
+                      type="text"
+                      value={workTitle}
+                      onChange={(event) => updateWorkTitle(event.target.value)}
+                    />
+                    {titleError ? (
+                      <span className="mt-1 block text-xs font-medium text-red-500">
+                        {titleError}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="ml-auto flex shrink-0 gap-2">
+                  <button
+                    className={secondaryButtonClass}
+                    disabled={isLoadingDemo}
+                    type="button"
+                    onClick={handleLoadDemo}
+                  >
+                    {isLoadingDemo ? (
+                      <IconLoader2 className="size-4 animate-spin" />
+                    ) : (
+                      <IconFileText className="size-4" />
+                    )}
+                    <strong>{isLoadingDemo ? "加载中" : "示例"}</strong>
+                  </button>
+                  <button
+                    className={secondaryButtonClass}
+                    disabled={isConverting}
+                    type="button"
+                    onClick={handleClearForm}
+                  >
+                    <IconEraser className="size-4" />
+                    <strong>清空</strong>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="shrink-0 text-sm font-medium text-muted-foreground">
+                  <strong>风格</strong>
+                </span>
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
                   {styleOptions.map((option) => {
                     const active = selectedStyle === option.value;
 
@@ -766,17 +991,11 @@ export function WorkspaceDashboard() {
                       <button
                         key={option.value}
                         aria-pressed={active}
-                        className={cn(
-                          "inline-flex h-9 cursor-pointer items-center justify-center rounded-lg border px-3 text-xs text-white shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                          active
-                            ? `ring-2 ${option.activeClass}`
-                            : option.idleClass,
-                        )}
+                        className={getStyleButtonClass(option, active)}
                         type="button"
                         onClick={() => {
                           setSelectedStyle(option.value);
-                          setScreenplayDraft(null);
-                          setOutputNotice(null);
+                          resetGeneratedOutput();
                         }}
                       >
                         <strong>{option.label}</strong>
@@ -784,14 +1003,6 @@ export function WorkspaceDashboard() {
                     );
                   })}
                 </div>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <span className="rounded-md border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground">
-                  {chapters.length}/{MAX_CHAPTERS} 章
-                </span>
-                <span className="rounded-md border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground">
-                  已锁定 {lockedCount}
-                </span>
               </div>
             </div>
           </div>
@@ -853,12 +1064,19 @@ export function WorkspaceDashboard() {
                   <strong>保存</strong>
                 </button>
                 <button
-                  className={primaryButtonClass}
+                  className={cn(
+                    primaryButtonClass,
+                    isConverting && "relative overflow-hidden bg-primary/85 disabled:opacity-100",
+                  )}
                   disabled={isConverting}
                   type="button"
                   onClick={handleConvert}
                 >
-                  <IconWand className="size-4" />
+                  {isConverting ? (
+                    <IconLoader2 className="size-4 animate-spin" />
+                  ) : (
+                    <IconWand className="size-4" />
+                  )}
                   <strong>{isConverting ? "转换中" : "转换"}</strong>
                 </button>
               </div>
@@ -867,30 +1085,60 @@ export function WorkspaceDashboard() {
         </section>
 
         <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border bg-card shadow-sm">
-          <div className="shrink-0 border-b px-4 py-4 md:px-5">
+          <div className="min-h-[176px] shrink-0 border-b px-4 py-4 md:px-5 lg:h-[176px]">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-background text-primary shadow-sm">
                   <IconMovie className="size-5" />
                 </div>
                 <strong className="text-lg leading-6 text-foreground md:text-xl">
-                  剧本样式输出
+                  剧本输出
                 </strong>
               </div>
               <span className="rounded-md border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground">
-                {screenplayDraft ? (outputLocked ? "已锁定" : "编辑中") : "等待转换"}
+                {isConverting
+                  ? "生成中"
+                  : screenplayDraft
+                    ? outputLocked
+                      ? "已锁定"
+                      : "编辑中"
+                  : "等待转换"}
               </span>
+            </div>
+            <div className="mt-3 grid gap-2.5">
+              <div className="flex items-center gap-3">
+                <span className="shrink-0 text-sm font-medium text-muted-foreground">
+                  <strong>标题</strong>
+                </span>
+                <strong className="flex h-9 min-w-0 flex-1 items-center rounded-md border bg-background px-3 text-sm text-foreground sm:max-w-[240px]">
+                  <span className="truncate">
+                    {rightHeaderTitle}
+                  </span>
+                </strong>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="shrink-0 text-sm font-medium text-muted-foreground">
+                  <strong>风格</strong>
+                </span>
+                <span
+                  aria-pressed="true"
+                  className={getStyleButtonClass(rightHeaderStyleOption, true)}
+                >
+                  <strong>{rightHeaderStyle}</strong>
+                </span>
+              </div>
             </div>
           </div>
 
           <div className="subtle-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-5">
-            {screenplayDraft ? (
+            {isConverting ? (
+              <ScreenplayGeneratingPanel />
+            ) : screenplayDraft ? (
               <ScreenplayOutputPanel
                 draft={screenplayDraft}
                 locked={outputLocked}
                 onBlockChange={updateBlock}
                 onCharacterChange={updateCharacter}
-                onFieldChange={updateScreenplayField}
                 onHeadingChange={updateSceneHeading}
                 onSceneChange={updateScene}
               />
@@ -931,7 +1179,7 @@ export function WorkspaceDashboard() {
                   <strong>保存</strong>
                 </button>
                 <button
-                  className={secondaryButtonClass}
+                  className={lockButtonClass}
                   type="button"
                   onClick={toggleOutputLock}
                 >
@@ -951,12 +1199,51 @@ export function WorkspaceDashboard() {
   );
 }
 
+function ScreenplayGeneratingPanel() {
+  return (
+    <div className="flex h-full min-h-[560px] flex-col rounded-md border bg-background p-6">
+      <div className="flex items-center gap-3">
+        <IconWand className="size-6 animate-pulse text-primary" />
+        <div>
+          <strong className="text-sm text-foreground">剧本正在生成中</strong>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            正在分析章节结构、人物关系和场景节奏。
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-8 grid flex-1 content-start gap-5">
+        <div className="grid gap-3">
+          <span className="h-3 w-32 rounded-full bg-primary/25 animate-pulse" />
+          <span className="h-10 rounded-md border bg-card/70 animate-pulse" />
+        </div>
+
+        <div className="grid gap-3 rounded-md border bg-card/60 p-4">
+          <span className="h-3 w-24 rounded-full bg-muted-foreground/20 animate-pulse" />
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            <span className="h-12 rounded-md bg-muted/70 animate-pulse [animation-delay:0.08s]" />
+            <span className="h-12 rounded-md bg-muted/60 animate-pulse [animation-delay:0.16s]" />
+          </div>
+        </div>
+
+        <div className="grid gap-3 rounded-md border bg-card/60 p-4">
+          <span className="h-3 w-20 rounded-full bg-muted-foreground/20 animate-pulse" />
+          <div className="grid gap-3">
+            <span className="h-10 rounded-md bg-muted/70 animate-pulse [animation-delay:0.12s]" />
+            <span className="h-24 rounded-md bg-muted/50 animate-pulse [animation-delay:0.2s]" />
+            <span className="h-10 w-4/5 rounded-md bg-muted/60 animate-pulse [animation-delay:0.28s]" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ScreenplayOutputPanel({
   draft,
   locked,
   onBlockChange,
   onCharacterChange,
-  onFieldChange,
   onHeadingChange,
   onSceneChange,
 }: {
@@ -973,7 +1260,6 @@ function ScreenplayOutputPanel({
     field: Exclude<keyof CharacterDraft, "id">,
     value: string,
   ) => void;
-  onFieldChange: (field: "title" | "screenplayType", value: string) => void;
   onHeadingChange: (id: string, field: keyof HeadingDraft, value: string) => void;
   onSceneChange: (
     id: string,
@@ -987,41 +1273,7 @@ function ScreenplayOutputPanel({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border bg-background p-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="grid gap-2 sm:col-span-2">
-            <span className="text-sm font-medium">标题</span>
-            <input
-              className={fieldClass}
-              readOnly={locked}
-              value={draft.title}
-              onChange={(event) => onFieldChange("title", event.target.value)}
-            />
-          </label>
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">剧本风格</span>
-            <select
-              className={cn(
-                fieldClass,
-                "disabled:cursor-default disabled:bg-muted/60 disabled:text-muted-foreground",
-              )}
-              disabled={locked}
-              value={draft.screenplayType}
-              onChange={(event) =>
-                onFieldChange("screenplayType", event.target.value)
-              }
-            >
-              {styleOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
-
-      <details className="rounded-md border bg-background" open>
+      <details className="rounded-md border bg-background">
         <summary className="cursor-pointer border-b px-4 py-3 text-sm font-bold text-foreground">
           人物列表
         </summary>
@@ -1085,7 +1337,6 @@ function ScreenplayOutputPanel({
             <details
               key={scene.id}
               className="rounded-md border bg-card"
-              open={sceneIndex === 0}
             >
               <summary className="cursor-pointer px-3 py-3 text-sm font-bold text-foreground">
                 第 {scene.number || sceneIndex + 1} 场
@@ -1329,7 +1580,7 @@ function ChapterCard({
     <article
       className={cn(
         "rounded-lg border bg-background p-4 shadow-sm transition",
-        chapter.locked && "border-primary/20 bg-accent/60",
+        chapter.locked && "border-warning/25 bg-warning/5",
       )}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1347,7 +1598,7 @@ function ChapterCard({
 
         <div className="flex flex-wrap gap-2">
           <button
-            className={secondaryButtonClass}
+            className={lockButtonClass}
             type="button"
             onClick={() => onToggleLock(chapter.id)}
           >
