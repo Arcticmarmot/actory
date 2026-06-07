@@ -91,10 +91,16 @@ const toScreenplayDraft = (screenplay: StoredScreenplay): ScreenplayDraft => ({
   scenes: screenplay.scenes,
 });
 
-export function MyScreenplaysView() {
-  const [panelMode, setPanelMode] = useState<RightPanelMode>("empty");
+export function MyScreenplaysView({
+  targetScreenplayId,
+}: {
+  targetScreenplayId?: string | null;
+}) {
+  const [panelMode, setPanelMode] = useState<RightPanelMode>(
+    targetScreenplayId ? "view" : "empty",
+  );
   const [selectedScreenplayId, setSelectedScreenplayId] = useState<string | null>(
-    null,
+    targetScreenplayId ?? null,
   );
   const [deleteTarget, setDeleteTarget] = useState<StoredScreenplay | null>(null);
   const screenplayStorageSnapshot = useSyncExternalStore(

@@ -7,6 +7,7 @@ import {
 import { Header } from "@/components/layout/header";
 import { MyNovelsView } from "@/components/my-novels-view";
 import { MyScreenplaysView } from "@/components/my-screenplays-view";
+import { StatsDashboard } from "@/components/stats-dashboard";
 import {
   WorkspaceDashboard,
   type WorkspaceNovelDraft,
@@ -23,6 +24,9 @@ export function WorkspaceShell() {
   const [workspaceNovelDraft, setWorkspaceNovelDraft] =
     useState<WorkspaceNovelDraft | null>(null);
   const [workspaceDraftKey, setWorkspaceDraftKey] = useState("empty");
+  const [targetScreenplayId, setTargetScreenplayId] = useState<string | null>(
+    null,
+  );
 
   const activeItem = useMemo(
     () => navItems.find((item) => item.key === activeNav) ?? navItems[0],
@@ -42,6 +46,7 @@ export function WorkspaceShell() {
   }, []);
 
   const handleNavClick = (key: NavKey) => {
+    setTargetScreenplayId(null);
     setActiveNav(key);
     setMobileOpen(false);
   };
@@ -50,6 +55,12 @@ export function WorkspaceShell() {
     setWorkspaceNovelDraft(novel);
     setWorkspaceDraftKey(`${novel.id ?? novel.title}-${Date.now()}`);
     setActiveNav("workspace");
+    setMobileOpen(false);
+  };
+
+  const handleOpenScreenplay = (screenplayId: string) => {
+    setTargetScreenplayId(screenplayId);
+    setActiveNav("screenplays");
     setMobileOpen(false);
   };
 
@@ -88,23 +99,14 @@ export function WorkspaceShell() {
           {activeNav === "novels" ? (
             <MyNovelsView onConvertNovel={handleConvertNovel} />
           ) : null}
-          {activeNav === "screenplays" ? <MyScreenplaysView /> : null}
+          {activeNav === "screenplays" ? (
+            <MyScreenplaysView targetScreenplayId={targetScreenplayId} />
+          ) : null}
           {activeNav === "stats" ? (
-            <PlaceholderPanel title={activeItem.title} />
+            <StatsDashboard onOpenScreenplay={handleOpenScreenplay} />
           ) : null}
         </section>
       </div>
     </main>
-  );
-}
-
-function PlaceholderPanel({ title }: { title: string }) {
-  return (
-    <div className="flex min-h-0 flex-1 items-center justify-center px-4 py-4 md:px-6">
-      <div className="rounded-lg border bg-card p-6 text-center shadow-sm">
-        <strong className="text-sm text-foreground">{title}</strong>
-        <p className="mt-2 text-sm text-muted-foreground">该模块待实现。</p>
-      </div>
-    </div>
   );
 }
