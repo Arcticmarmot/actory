@@ -1,3 +1,4 @@
+import { ActoryLogo } from "@/components/actory-logo";
 import { navItems, type NavKey } from "@/config/navigation";
 import { cn } from "@/lib/cn";
 import { IconUserCircle, IconX } from "@tabler/icons-react";
@@ -75,21 +76,19 @@ export function MobileSidebar({
 
 function SidebarBrand({ isOpen }: { isOpen: boolean }) {
   return (
-    <div className="flex h-16 items-center gap-2 px-2">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-sidebar-border bg-card/70 text-sm font-semibold text-foreground shadow-sm backdrop-blur">
-        A
-      </div>
-      <div
-        className={cn(
-          "min-w-0 transition-opacity duration-150",
-          isOpen
-            ? "w-auto opacity-100"
-            : "pointer-events-none w-0 overflow-hidden opacity-0",
+    <div
+      className={cn(
+        "flex h-16 items-center px-2",
+        isOpen ? "justify-start" : "justify-center",
+      )}
+    >
+      <ActoryLogo
+        compact={!isOpen}
+        textClassName={cn(
+          "transition-opacity duration-150",
+          isOpen ? "opacity-100" : "opacity-0",
         )}
-      >
-        <p className="truncate text-sm font-semibold leading-5 text-foreground">Actory</p>
-        <p className="truncate text-xs text-muted-foreground">Act the story</p>
-      </div>
+      />
     </div>
   );
 }
@@ -150,14 +149,14 @@ function SidebarFooter({ isOpen }: { isOpen: boolean }) {
           "flex h-11 w-full cursor-pointer items-center gap-2 rounded-md px-2 text-left transition hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           !isOpen && "justify-center",
         )}
-        title="作者工作区"
+        title="工作区"
         type="button"
       >
         <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
           <IconUserCircle className="size-4" />
         </div>
         <div className={cn("min-w-0", isOpen ? "block" : "hidden")}>
-          <strong className="block truncate text-xs text-foreground">作者工作区</strong>
+          <strong className="block truncate text-xs text-foreground">工作区</strong>
           <p className="truncate text-xs text-muted-foreground">本地草稿</p>
         </div>
       </button>

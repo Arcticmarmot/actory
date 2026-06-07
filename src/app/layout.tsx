@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Actory",
-  description: "Act the story - AI assisted screenplay workspace.",
+  description: "AI assisted novel and screenplay workspace.",
 };
 
 export default function RootLayout({
