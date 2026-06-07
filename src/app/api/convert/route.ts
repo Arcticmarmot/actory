@@ -1,31 +1,32 @@
 import { NextResponse } from "next/server";
+import { callLLM } from "@/lib/llm-client";
+import {
+  buildScreenplayPrompt,
+  type ScreenplayChapterInput,
+  type ScreenplayType,
+} from "@/lib/screenplay-prompt";
 
-type ScreenplayType = "film" | "short_drama" | "stage_play";
-
-type ChapterInput = {
-  id?: string;
-  title: string;
-  content: string;
-};
+type ConversionMode = "mock" | "llm";
 
 type ConvertRequestBody = {
   title: string;
   screenplayType: ScreenplayType;
-  chapters: ChapterInput[];
+  chapters: ScreenplayChapterInput[];
 };
 
 const allowedScreenplayTypes = new Set<ScreenplayType>([
-  "film",
-  "short_drama",
+  "standard_film",
+  "commercial_short_drama",
+  "fantasy_animation",
   "stage_play",
 ]);
 
-const mockScreenplayYaml = `# 剧本标题，属于作品内容，可以写入 YAML
+const buildMockScreenplayYaml = () => `# 剧本标题，属于作品内容，可以写入 YAML
 title: "雨中的钟表店"
 
 # 剧本类型，用于提示 AI 和前端采取不同的生成、编辑和展示策略
-# 推荐值：film、short_drama、stage_play
-screenplay_type: "film"
+# 推荐值：standard_film、commercial_short_drama、fantasy_animation、stage_play
+screenplay_type: "standard_film"
 
 # 人物列表
 # 人物信息独立存放，方便对白块通过 character 字段引用
@@ -124,6 +125,9 @@ scenes:
         character: "char_002"
         line: "有些东西不是停了，只是在等人回来。"`;
 
+const getConversionMode = (): ConversionMode =>
+  process.env.CONVERSION_MODE === "llm" ? "llm" : "mock";
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
@@ -146,7 +150,8 @@ const validateConvertPayload = (
     !allowedScreenplayTypes.has(payload.screenplayType as ScreenplayType)
   ) {
     return {
-      error: "screenplayType must be one of film, short_drama, stage_play.",
+      error:
+        "screenplayType must be one of standard_film, commercial_short_drama, fantasy_animation, stage_play.",
     };
   }
 
@@ -154,7 +159,7 @@ const validateConvertPayload = (
     return { error: "chapters must contain at least 3 chapters." };
   }
 
-  const chapters: ChapterInput[] = [];
+  const chapters: ScreenplayChapterInput[] = [];
 
   for (const [index, chapter] of payload.chapters.entries()) {
     if (!isRecord(chapter)) {
@@ -203,12 +208,36 @@ export async function POST(request: Request) {
 
   const validation = validateConvertPayload(payload);
 
-  if (validation.error) {
+  if ("error" in validation) {
     return NextResponse.json({ error: validation.error }, { status: 400 });
   }
 
-  return NextResponse.json({
-    mode: "mock",
-    screenplayYaml: mockScreenplayYaml,
-  });
+  const mode = getConversionMode();
+
+  if (mode === "mock") {
+    return NextResponse.json({
+      mode,
+      screenplayYaml: buildMockScreenplayYaml(),
+    });
+  }
+
+  try {
+    const prompt = buildScreenplayPrompt(validation.body);
+    const screenplayYaml = await callLLM(prompt);
+
+    return NextResponse.json({
+      mode,
+      screenplayYaml,
+    });
+  } catch (error) {
+    console.error(
+      "LLM conversion failed:",
+      error instanceof Error ? error.message : error,
+    );
+
+    return NextResponse.json(
+      { error: "LLM conversion failed." },
+      { status: 500 },
+    );
+  }
 }

@@ -38,8 +38,8 @@ Actory Screenplay YAML Schema 主要服务以下目标：
 title: "雨中的钟表店"
 
 # 剧本类型，用于提示 AI 和前端采取不同的生成、编辑和展示策略
-# 推荐值：film、short_drama、stage_play
-screenplay_type: "film"
+# 推荐值：standard_film、commercial_short_drama、fantasy_animation、stage_play
+screenplay_type: "standard_film"
 
 # 人物列表
 # 人物信息独立存放，方便对白块通过 character 字段引用
@@ -145,7 +145,7 @@ scenes:
 
 ```yaml
 title: "雨中的钟表店"
-screenplay_type: "film"
+screenplay_type: "standard_film"
 characters: []
 scenes: []
 ```
@@ -153,7 +153,7 @@ scenes: []
 | 字段                | 类型     | 必填 | 说明                                        |
 | ----------------- | ------ | -- | ----------------------------------------- |
 | `title`           | string | 是  | 剧本标题                                      |
-| `screenplay_type` | string | 是  | 剧本类型，例如 `film`、`short_drama`、`stage_play` |
+| `screenplay_type` | string | 是  | 剧本类型，例如 `standard_film`、`commercial_short_drama`、`fantasy_animation`、`stage_play` |
 | `characters`      | array  | 是  | 人物列表                                      |
 | `scenes`          | array  | 是  | 线性场景列表                                    |
 
@@ -170,21 +170,22 @@ scenes: []
 
 推荐值：
 
-| 值             | 说明      |
-| ------------- | ------- |
-| `film`        | 电影剧本初稿  |
-| `short_drama` | 短剧剧本初稿  |
-| `stage_play`  | 舞台剧剧本初稿 |
+| 值                         | 说明       |
+| -------------------------- | ---------- |
+| `standard_film`            | 标准影视剧本 |
+| `commercial_short_drama`   | 商业短剧剧本 |
+| `fantasy_animation`        | 奇幻动画剧本 |
+| `stage_play`               | 舞台话剧剧本 |
 
 示例：
 
 ```yaml
-screenplay_type: "film"
+screenplay_type: "standard_film"
 ```
 
 设计原因：
 
-* 电影、短剧和舞台剧在节奏、场景组织和对白密度上存在差异。
+* 不同剧本风格在节奏、场景组织、对白密度和画面呈现上存在差异。
 * 当前版本只通过 `screenplay_type` 标记类型，不为每种类型设计完全不同的结构。
 * 后续接入 LLM 时，可以根据 `screenplay_type` 调整 prompt，而不破坏 YAML 基础结构。
 
